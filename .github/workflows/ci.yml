@@ -68,7 +68,7 @@ jobs:
           if [[ "$GITHUB_REF_TYPE" == tag ]]; then
             RELEASE_TAG="$GITHUB_REF_NAME"
           else
-            VERSION=$(sed -n 's/^set(PROJECT_VER "\([0-9][0-9.]*\)")$/\1/p' ../CMakeLists.txt)
+            VERSION=$(sed -n 's/^Firmware: //p' BUILD-INFO.txt)
             [[ "$VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
             RELEASE_TAG="v$VERSION"
           fi
