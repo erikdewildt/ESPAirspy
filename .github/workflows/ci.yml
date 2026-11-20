@@ -90,10 +90,13 @@ jobs:
               fi
             fi
 
-            EXISTING_TAG_SHA=$(gh api "repos/$GH_REPO/commits/$RELEASE_TAG" --jq .sha 2>/dev/null || true)
-            if [[ -n "$EXISTING_TAG_SHA" && "$EXISTING_TAG_SHA" != "$GITHUB_SHA" ]]; then
-              echo "Tag $RELEASE_TAG already points to a different commit." >&2
-              exit 1
+            if git ls-remote --exit-code --tags origin "refs/tags/$RELEASE_TAG" >/dev/null 2>&1; then
+              git fetch --quiet origin "refs/tags/$RELEASE_TAG"
+              EXISTING_TAG_SHA=$(git rev-parse "$RELEASE_TAG^{commit}")
+              if [[ "$EXISTING_TAG_SHA" != "$GITHUB_SHA" ]]; then
+                echo "Tag $RELEASE_TAG already points to a different commit." >&2
+                exit 1
+              fi
             fi
             gh release create "$RELEASE_TAG" ./* --target "$GITHUB_SHA" --generate-notes --title "ESPAirspy $RELEASE_TAG"
           else
