@@ -1,0 +1,1055 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<title>ESPAirspy · HF+ Network Receiver</title>
+<style>
+:root {
+  color-scheme: dark;
+  --bg:#111721; --surface:#182230; --subtle:#131c28; --hero:#1a2a3d;
+  --line:#2b3a4d; --edge:#53667e;
+  --ink:#edf3fa; --muted:#a6b6ca;
+  --accent:#81c7fb; --accent-surface:#20364a;
+  --green:#79d7ad; --amber:#f4c175; --red:#ff9a9e;
+  --plot-cpu:#7bd2ff; --plot-ram:#7ee0b6; --plot-psram:#c7a9ff; --plot-flash:#f4c175;
+  --radius:12px;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg:#eef2f7; --surface:#fff; --subtle:#f3f6fa; --hero:#e5effa;
+  --line:#d6e0ed; --edge:#788ba1;
+  --ink:#17263a; --muted:#506178;
+  --accent:#075589; --accent-surface:#e4f1fc;
+  --green:#12633f; --amber:#794800; --red:#a62238;
+  --plot-cpu:#07598f; --plot-ram:#08724d; --plot-psram:#6942a3; --plot-flash:#825005;
+}
+* {box-sizing:border-box}
+[hidden] {display:none !important}
+body {margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+button, select, input {font:inherit}
+button, input[type=file]::file-selector-button {
+  border:1px solid var(--edge);background:var(--subtle);color:var(--ink);
+  border-radius:8px;min-height:44px;padding:9px 13px;cursor:pointer
+}
+button:hover:not(:disabled) {border-color:var(--accent);color:var(--accent)}
+button:disabled {opacity:.62;cursor:not-allowed}
+button.primary {background:var(--accent-surface);border-color:var(--accent);color:var(--accent);font-weight:650}
+button.danger {color:var(--red)}
+:focus-visible {outline:2px solid var(--accent);outline-offset:3px}
+a {color:var(--accent);text-underline-offset:3px}
+.app {max-width:1360px;margin:auto;padding:0 32px 48px}
+header {display:flex;align-items:center;justify-content:space-between;gap:16px;padding:19px 0;border-bottom:1px solid var(--line)}
+.brand {display:flex;align-items:center;gap:12px}
+.brand-mark {width:35px;height:35px;flex:none;display:grid;place-content:center;border-radius:9px;background:var(--accent-surface);color:var(--accent);font:700 20px/1 ui-monospace,monospace}
+.brand b {display:block;font-size:19px;letter-spacing:-.035em;line-height:1.15}
+.brand small {color:var(--muted);font-size:12px}
+.hdrstat {display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap}
+.node,.muted {color:var(--muted)}
+.node {font-size:13px}
+.pill {display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border:1px solid var(--line);border-radius:100px;background:var(--subtle);color:var(--muted);font-size:13px;white-space:nowrap}
+.pill::before {content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.pill.ok,.ok {color:var(--green)}
+.pill.bad {color:var(--red)}
+.warn {color:var(--amber)}
+.theme {min-height:44px;font-size:13px}
+.tabs {display:flex;flex-wrap:wrap;gap:4px;padding:13px 0;border-bottom:1px solid var(--line);margin-bottom:27px}
+.tabs button {background:transparent;border-color:transparent;color:var(--muted);font-size:14px}
+.tabs button.active {background:var(--accent-surface);color:var(--accent);font-weight:650}
+.page-heading {font-size:clamp(25px,4vw,34px);letter-spacing:-.035em;margin:0 0 17px;line-height:1.2}
+#freshness {padding:10px 13px;margin:0 0 14px;border:1px solid var(--edge);border-radius:8px;color:var(--amber);background:var(--subtle)}
+.panel {border:1px solid var(--line);background:var(--surface);border-radius:var(--radius);margin:0 0 16px;min-width:0}
+.panel-h {display:flex;align-items:center;justify-content:space-between;gap:8px 17px;flex-wrap:wrap;padding:13px 17px;border-bottom:1px solid var(--line)}
+.panel-h h2 {font-size:15px;font-weight:680;margin:0;line-height:1.35}
+.panel-h .muted {font-size:12px}
+.panel-b {padding:16px 17px}
+.hero {background:var(--hero)}
+.hero .panel-h {border:0;padding-bottom:0;color:var(--muted)}
+.hero-b {display:grid;grid-template-columns:minmax(235px,1fr) minmax(0,1fr);align-items:center;gap:20px;padding:13px 20px 22px}
+.freq {font:650 clamp(34px,5vw,62px)/1.12 system-ui,sans-serif;letter-spacing:-.055em;font-variant-numeric:tabular-nums;white-space:nowrap}
+.freq small {font-size:15px;font-weight:550;letter-spacing:0;color:var(--muted)}
+.meta {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;color:var(--muted);font-size:13px}
+.meta span {padding-inline-start:11px;border-inline-start:1px solid var(--edge)}
+.meta b {display:block;margin-top:4px;color:var(--ink);font-size:14px}
+.cells {display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:16px}
+.cell {background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px 15px;min-width:0}
+.k,.s {color:var(--muted);font-size:12px}
+.v {margin:3px 0;font-size:clamp(19px,3vw,25px);font-weight:680;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.kv-grid {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr));column-gap:24px}
+.kv {display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:baseline;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px}
+.kv span {color:var(--muted)}
+.kv b {max-width:20ch;text-align:right;font-weight:630;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.field-grid {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));gap:12px 18px}
+.field {display:grid;gap:6px;color:var(--muted);font-size:13px}
+.field input,.field select {width:100%;min-height:44px;background:var(--subtle);color:var(--ink);border:1px solid var(--edge);border-radius:8px;padding:8px 10px}
+.switch {display:flex;align-items:center;gap:11px;min-height:44px;cursor:pointer}
+.switch input {width:19px;height:19px;accent-color:var(--accent);flex:none}
+.switch small {color:var(--muted)}
+.file-row,.head-row {display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:6px 0 10px}
+input[type=file] {max-width:100%;color:var(--ink);font-size:13px}
+input[type=file]::file-selector-button {margin-right:9px}
+.segmented {display:inline-flex;flex-wrap:wrap;gap:4px}
+.segmented button.active {background:var(--accent-surface);color:var(--accent);border-color:var(--accent)}
+.note,pre {background:var(--subtle);border:1px solid var(--line);border-radius:8px;padding:10px 13px;margin:8px 0;font-size:13px}
+.note p {margin:4px 0}
+pre {white-space:pre-wrap;overflow-wrap:anywhere}
+pre:empty {display:none}
+code {color:var(--accent);font-family:ui-monospace,monospace}
+.chart {height:210px;margin-top:8px;background:var(--subtle);border:1px solid var(--line);border-radius:8px;padding:6px}
+canvas {width:100%;height:100%;display:block}
+.legend {display:flex;gap:15px;flex-wrap:wrap;color:var(--muted);font-size:13px;margin-top:10px}
+.legend span {display:inline-flex;align-items:center;gap:6px}
+.legend i {width:9px;height:9px;border-radius:2px}
+.changelog h3 {font-size:16px;color:var(--accent);margin:16px 0 4px}
+.changelog ul {padding-left:20px;margin:3px 0 12px}
+@media(max-width:1050px) {.cells{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:790px) {
+  .app{padding-inline:20px}
+  .hero-b{grid-template-columns:1fr}
+  .freq{font-size:clamp(38px,8vw,59px)}
+}
+@media(max-width:530px) {
+  .app{padding:0 12px 24px}
+  header{gap:8px;padding-block:12px;align-items:flex-start}
+  .brand small,.node{display:none}
+  .brand{gap:7px;padding-top:4px}
+  .hdrstat{gap:5px}
+  .tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:18px}
+  .tabs button{padding-inline:3px;font-size:13px}
+  .panel-h,.panel-b,.hero-b{padding-inline:12px}
+  .cells{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .cell{padding:10px}
+  .meta{gap:5px}
+  .meta span{padding-inline-start:6px}
+  .meta b{font-size:12px}
+  .plot{height:165px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<header>
+  <div class="brand"><span class="brand-mark" aria-hidden="true">∿</span><div><b>ESPAirspy</b><small>HF+ network receiver</small></div></div>
+  <div class="hdrstat">
+    <span class="node" id="nodeIp">—</span>
+    <span id="connection" class="pill" role="status">Connecting…</span>
+    <button type="button" id="theme" class="theme">Light theme</button>
+  </div>
+</header>
+
+<nav class="tabs" aria-label="Sections">
+  <button type="button" class="active" data-panel="overview" aria-current="page">Overview</button>
+  <button type="button" data-panel="statistics">Streaming</button>
+  <button type="button" data-panel="receiver">Receiver</button>
+  <button type="button" data-panel="system">System</button>
+  <button type="button" data-panel="update">Firmware</button>
+  <button type="button" data-panel="settings">Settings</button>
+  <button type="button" data-panel="changelog">Changelog</button>
+</nav>
+<main id="content">
+<p id="freshness" hidden></p>
+
+<!-- ================= Overview ================= -->
+<section id="panel-overview" data-view>
+  <h1 class="page-heading" tabindex="-1">Overview</h1>
+  <section class="panel hero">
+    <div class="panel-h"><h2>Receiver center frequency</h2><span id="firmwareBadge" class="pill">Firmware —</span></div>
+    <div class="hero-b">
+      <div class="freq"><span id="overviewFrequency">—</span> <small>MHz</small></div>
+      <div class="meta">
+        <span>I/Q rate<b id="overviewRate">—</b></span>
+        <span>Airspy<b id="overviewAirspy">—</b></span>
+        <span>SpyServer<b id="overviewSpy">—</b></span>
+      </div>
+    </div>
+  </section>
+
+  <div class="cells">
+    <article class="cell"><div class="k">CPU · both cores</div><div class="v ok" id="cpu">—</div><div class="s" id="cpuCores">Average load</div></article>
+    <article class="cell"><div class="k">Internal heap</div><div class="v" id="ram">—</div><div class="s" id="ramDetail">—</div></article>
+    <article class="cell"><div class="k">PSRAM</div><div class="v" id="psram">—</div><div class="s" id="psramDetail">—</div></article>
+    <article class="cell"><div class="k">Flash · reserved</div><div class="v" id="flash">—</div><div class="s" id="flashDetail">—</div></article>
+    <article class="cell"><div class="k">Firmware size</div><div class="v" id="app">—</div><div class="s" id="slot">—</div></article>
+  </div>
+
+  <section class="panel" style="margin-top:12px">
+    <div class="panel-h"><h2>Receiver &amp; stream summary</h2></div>
+    <div class="panel-b"><div class="kv-grid">
+      <div class="kv"><span>Airspy firmware</span><b id="ovAirspyFw">—</b></div>
+      <div class="kv"><span>Gain</span><b id="ovGain">—</b></div>
+      <div class="kv"><span>Calibration</span><b id="ovCal">—</b></div>
+      <div class="kv"><span>USB blocks</span><b id="ovBlocks">—</b></div>
+      <div class="kv"><span>Dropped blocks</span><b id="ovDrops">—</b></div>
+      <div class="kv"><span>Network rate</span><b id="ovSpeed">—</b></div>
+      <div class="kv"><span>Sent</span><b id="ovSent">—</b></div>
+      <div class="kv"><span>Uptime</span><b id="ovUptime">—</b></div>
+    </div></div>
+  </section>
+</section>
+
+<!-- ================= Statistics ================= -->
+<section id="panel-statistics" data-view hidden>
+  <h1 class="page-heading" tabindex="-1">Streaming</h1>
+  <section class="panel"><div class="panel-h"><h2>Transport diagnostics</h2><span class="muted">Counters since boot</span></div>
+    <div class="panel-b"><div class="kv-grid">
+      <div class="kv"><span>Clients</span><b id="streamClients">—</b></div>
+      <div class="kv"><span>Active I/Q rate</span><b id="streamRate">—</b></div>
+      <div class="kv"><span>Data format</span><b id="streamFormat">—</b></div>
+      <div class="kv"><span>Network throughput</span><b id="streamNet">—</b></div>
+      <div class="kv"><span>USB payload during streaming</span><b id="streamRx">—</b></div>
+      <div class="kv"><span>Lost I/Q samples</span><b id="streamLost">—</b></div>
+      <div class="kv"><span>Estimated peak fill / capacity</span><b id="streamRing">—</b></div>
+      <div class="kv"><span>Empty I/Q reads</span><b id="streamEmpty">—</b></div>
+      <div class="kv"><span>I/Q samples sent</span><b id="streamSent">—</b></div>
+      <div class="kv"><span>I/Q send failures</span><b id="streamFailures">—</b></div>
+      <div class="kv"><span>Longest I/Q send</span><b id="streamSendTime">—</b></div>
+    </div></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-h"><h2>System history</h2><span class="muted" style="letter-spacing:.06em;text-transform:none">every 5 s · averages</span></div>
+    <div class="panel-b">
+      <div class="head-row">
+        <div class="segmented" role="group" aria-label="Time range">
+          <button data-range="5m" class="active">5 min</button>
+          <button data-range="1h">1 hour</button>
+          <button data-range="1d">1 day</button>
+        </div>
+      </div>
+      <div class="chart plot"><canvas id="chart" role="img" aria-label="CPU, memory and flash history">CPU, memory and flash history</canvas></div>
+      <div class="legend">
+        <span><i style="background:var(--plot-cpu)"></i>CPU</span>
+        <span><i style="background:var(--plot-ram)"></i>Internal RAM</span>
+        <span id="psramLegend" hidden><i style="background:var(--plot-psram)"></i>PSRAM</span>
+        <span><i style="background:var(--plot-flash)"></i>Reserved flash</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-h"><h2>SpyServer network traffic</h2><span class="muted" style="letter-spacing:.06em;text-transform:none">sent per interval</span></div>
+    <div class="panel-b">
+      <div class="chart plot"><canvas id="networkChart" role="img" aria-label="SpyServer throughput history">SpyServer throughput history</canvas></div>
+      <p class="muted" id="historyNote" style="margin:10px 0 0;font-size:11px">Loading history…</p>
+    </div>
+  </section>
+
+  <section class="panel" id="spectrumStats" hidden>
+    <div class="panel-h"><h2>SpyServer spectrum · counters</h2><span class="muted" style="letter-spacing:.06em;text-transform:none">since restart</span></div>
+    <div class="panel-b">
+      <div class="kv-grid">
+        <div class="kv"><span>Frames computed</span><b id="fftFrames">—</b></div>
+        <div class="kv"><span>Blocks processed</span><b id="fftBlocks">—</b></div>
+        <div class="kv"><span>Dropped</span><b id="fftDrops">—</b></div>
+        <div class="kv"><span>Filter resets</span><b id="fftResets">—</b></div>
+        <div class="kv"><span>Longest block (wall-clock)</span><b id="fftMaxTime">—</b></div>
+      </div>
+    </div>
+  </section>
+</section>
+
+<!-- ================= Receiver ================= -->
+<section id="panel-receiver" data-view hidden>
+  <h1 class="page-heading" tabindex="-1">Receiver</h1>
+  <section class="panel">
+    <div class="panel-h"><h2>Identity</h2></div>
+    <div class="panel-b"><div class="kv-grid">
+      <div class="kv"><span>Firmware</span><b id="version">—</b></div>
+      <div class="kv"><span>Uptime</span><b id="uptime">—</b></div>
+      <div class="kv"><span>Supported receiver</span><b>Airspy HF+ Discovery</b></div>
+      <div class="kv"><span>Airspy HF+</span><b id="airspy">—</b></div>
+      <div class="kv"><span>Airspy firmware</span><b id="airspyFirmware">—</b></div>
+      <div class="kv"><span>SpyServer</span><b id="spy">—</b></div>
+      <div class="kv"><span>Ethernet</span><b id="ethernetLink">—</b></div>
+    </div></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-h"><h2>Frequency &amp; gain</h2></div>
+    <div class="panel-b"><div class="kv-grid">
+      <div class="kv"><span>USB sample rate</span><b id="sampleRate">—</b></div>
+      <div class="kv"><span>I/Q network rate</span><b id="iqRate">—</b></div>
+      <div class="kv"><span>Supported I/Q rates</span><b>768 / 384 / 192 / 96 / 48 / 24 / 12 kS/s</b></div>
+      <div class="kv"><span>Receiver center</span><b id="frequency">—</b></div>
+      <div class="kv"><span>I/Q receive frequency</span><b id="iqFrequency">—</b></div>
+      <div class="kv"><span>Receiver gain</span><b id="receiverGain">—</b></div>
+      <div class="kv"><span>Oscillator frequency</span><b id="loFrequency">—</b></div>
+      <div class="kv"><span>Factory calibration</span><b id="calibration">—</b></div>
+    </div></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-h"><h2>USB transport</h2></div>
+    <div class="panel-b"><div class="kv-grid">
+      <div class="kv"><span>Transfers completed</span><b id="usbCompletions">—</b></div>
+      <div class="kv"><span>Empty transfers</span><b id="usbEmpty">—</b></div>
+      <div class="kv"><span>Blocks received</span><b id="usbBlocks">—</b></div>
+      <div class="kv"><span>Dropped blocks</span><b id="drops">—</b></div>
+    </div></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-h"><h2>Signal level &amp; clipping</h2></div>
+    <div class="panel-b"><div class="kv-grid">
+      <div class="kv"><span>I/Q near rail</span><b id="inputRail">—</b></div>
+      <div class="kv"><span>Clipped by frequency correction</span><b id="mixerClipped">—</b></div>
+      <div class="kv"><span>Clipped output samples</span><b id="clipped">—</b></div>
+    </div></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-h"><h2>Network</h2></div>
+    <div class="panel-b"><div class="kv-grid">
+      <div class="kv"><span>Active clients</span><b id="activeClients">—</b></div>
+      <div class="kv"><span>Connections</span><b id="connections">—</b></div>
+      <div class="kv"><span>Sent</span><b id="traffic">—</b></div>
+      <div class="kv"><span>Rate</span><b id="networkSpeed">—</b></div>
+    </div></div>
+  </section>
+
+</section>
+
+<section id="panel-system" data-view hidden>
+  <h1 class="page-heading" tabindex="-1">System</h1>
+  <section class="panel"><div class="panel-h"><h2>Hardware</h2></div>
+    <div class="panel-b"><div class="kv-grid">
+      <div class="kv"><span>Target board</span><b id="systemBoard">—</b></div>
+      <div class="kv"><span>Processor</span><b id="systemChip">—</b></div>
+      <div class="kv"><span>Firmware</span><b id="systemVersion">—</b></div>
+      <div class="kv"><span>Uptime</span><b id="systemUptime">—</b></div>
+      <div class="kv"><span>OTA slot</span><b id="systemSlot">—</b></div>
+      <div class="kv"><span>Ethernet link</span><b id="systemEthernet">—</b></div>
+      <div class="kv"><span>Free internal heap</span><b id="systemHeap">—</b></div>
+      <div class="kv"><span>Free PSRAM</span><b id="systemPsram">—</b></div>
+    </div></div>
+  </section>
+  <section class="panel">
+    <div class="panel-h"><h2>Memory &amp; system</h2></div>
+    <div class="panel-b"><div class="kv-grid">
+      <div class="kv"><span>Minimum free heap</span><b id="heapMin">—</b></div>
+      <div class="kv"><span>Largest free block</span><b id="heapLargest">—</b></div>
+      <div class="kv"><span>Active tasks</span><b id="tasks">—</b></div>
+      <div class="kv"><span>Settings storage</span><b id="nvs">—</b></div>
+      <div class="kv"><span>ESP-IDF</span><b id="idf">—</b></div>
+    </div></div>
+  </section>
+  <section class="panel"><div class="panel-h"><h2>Diagnostic summary</h2></div><div class="panel-b">
+    <button id="copyDiagnostics" type="button" disabled>Copy diagnostics</button>
+    <pre id="copyResult" role="status"></pre>
+    <pre id="diagnosticText" tabindex="0" aria-label="Sanitized diagnostics" hidden></pre>
+  </div></section>
+</section>
+
+<!-- ================= Update ================= -->
+<section id="panel-update" data-view hidden>
+  <h1 class="page-heading" tabindex="-1">Firmware</h1>
+  <section class="panel">
+    <div class="panel-h"><h2>Update ESP firmware</h2></div>
+    <div class="panel-b">
+      <p class="muted" style="margin:0 0 8px">Select a firmware file for the Unit PoE-P4. The device restarts after uploading.</p>
+      <div class="file-row">
+        <input type="file" id="file" aria-label="ESP firmware binary" accept=".bin,application/octet-stream">
+        <button id="upload" class="primary">Upload and restart</button>
+      </div>
+      <pre id="result" role="status"></pre>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-h"><h2>Airspy HF+ firmware</h2></div>
+    <div class="panel-b">
+      <div class="note">
+        <p>The Airspy has its own firmware, separate from the ESP. Its version is shown under <strong>Receiver</strong>.</p>
+        <p>The Airspy HF+ Discovery exists in two variants (BB and CD). Use the file that matches your receiver. This receiver requires: <strong id="airspyExpected">—</strong>.</p>
+        <p>Choose the correct file (<code>hfplus-firmware-cd.bin</code> or <code>hfplus-firmware-bb.bin</code>) and click update. Verification and update reject a wrong file. The device backs up the calibration, starts the bootloader, writes and verifies the firmware, then restores the calibration. Keep the receiver connected.</p>
+      </div>
+      <div class="file-row">
+        <input type="file" id="airspyFile" aria-label="Airspy HF+ firmware binary" accept=".bin,application/octet-stream">
+        <button id="airspyCheck">Verify file</button>
+        <button id="airspyUpdate" class="primary">Update Airspy firmware</button>
+      </div>
+      <pre id="airspyResult" role="status"></pre>
+      <pre id="airspyUpdateResult" role="status"></pre>
+      <p class="muted" style="margin:10px 0 0;font-size:13px"><a href="/api/airspy/calibration" download>Download the receiver configuration</a> as a backup for this Airspy.</p>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-h"><h2>Maintenance</h2></div>
+    <div class="panel-b">
+      <div class="file-row">
+        <button id="airspyRecover">Recover receiver (bootloader)</button>
+        <button id="fullRestart">Restart device and receiver</button>
+      </div>
+      <pre id="recoverResult" role="status"></pre>
+    </div>
+  </section>
+</section>
+
+<!-- ================= Settings ================= -->
+<section id="panel-settings" data-view hidden>
+  <h1 class="page-heading" tabindex="-1">Settings</h1>
+  <section class="panel">
+    <div class="panel-h"><h2>Network</h2><span class="muted" style="letter-spacing:.06em;text-transform:none">active after restart</span></div>
+    <div class="panel-b">
+      <div class="segmented" id="netMode" role="group" aria-label="IP configuration">
+        <button type="button" data-net="0" class="active">DHCP</button>
+        <button type="button" data-net="1">Static IP</button>
+      </div>
+      <div id="staticFields" hidden style="margin-top:16px">
+        <div class="field-grid">
+          <label class="field"><span>IP address</span><input id="setIp" type="text" inputmode="decimal" placeholder="192.0.2.50"></label>
+          <label class="field"><span>Netmask</span><input id="setMask" type="text" inputmode="decimal" placeholder="255.255.255.0"></label>
+          <label class="field"><span>Gateway</span><input id="setGw" type="text" inputmode="decimal" placeholder="192.0.2.1"></label>
+          <label class="field"><span>DNS</span><input id="setDns" type="text" inputmode="decimal" placeholder="optional"></label>
+        </div>
+      </div>
+      <p class="muted" style="margin:14px 0 0">Current address: <b id="setCurrentIp">—</b>. Network changes take effect after a restart.</p>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-h"><h2>Experiments</h2><span class="muted" style="letter-spacing:.06em;text-transform:none">applied immediately</span></div>
+    <div class="panel-b">
+      <label class="switch"><input type="checkbox" id="setDc"><span>DC blocker <small>· removes the DC spike at center</small></span></label>
+      <label class="switch"><input type="checkbox" id="setIq"><span>IQ balancer <small>· image rejection</small></span></label>
+      <p class="muted" id="expNote" style="margin:12px 0 0">Only available if that stage is compiled into this firmware. Changes are applied immediately, without a restart.</p>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-h"><h2>Receiver</h2><span class="muted" style="letter-spacing:.06em;text-transform:none">applied immediately</span></div>
+    <div class="panel-b">
+      <div class="field-grid">
+        <label class="field"><span>Gain</span>
+          <select id="setGain">
+            <option value="0">Automatic (AGC)</option>
+            <option value="9">Max sensitivity (0 dB attenuation)</option>
+            <option value="8">6 dB attenuation</option>
+            <option value="7">12 dB attenuation</option>
+            <option value="6">18 dB attenuation</option>
+            <option value="5">24 dB attenuation</option>
+            <option value="4">30 dB attenuation</option>
+            <option value="3">36 dB attenuation</option>
+            <option value="2">42 dB attenuation</option>
+            <option value="1">48 dB attenuation</option>
+          </select>
+        </label>
+        <label class="field"><span>AGC threshold</span>
+          <select id="setThreshold">
+            <option value="0">Low</option>
+            <option value="1">High (more sensitive)</option>
+          </select>
+        </label>
+      </div>
+      <label class="switch" style="margin-top:12px"><input type="checkbox" id="setLna"><span>LNA +6 dB <small>· postamp, digitally compensated</small></span></label>
+      <p class="muted" style="margin:12px 0 0">Gain and threshold apply immediately. SDROxide may override the gain during a session.</p>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-h"><h2>Save</h2></div>
+    <div class="panel-b">
+      <div class="file-row">
+        <button id="saveSettings" class="primary" disabled>Save settings</button>
+        <button id="saveRestart" hidden disabled>Save and restart</button>
+      </div>
+      <pre id="settingsResult" role="status"></pre>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-h"><h2>Reset</h2></div>
+    <div class="panel-b">
+      <div class="file-row">
+        <button id="factoryReset" class="danger">Reset settings to defaults</button>
+      </div>
+      <p class="muted" style="margin:8px 0 0">Clears the saved settings (network, DC/IQ, gain, LNA, threshold) and restarts. History is kept.</p>
+      <pre id="resetResult" role="status"></pre>
+    </div>
+  </section>
+</section>
+
+<!-- ================= Changelog ================= -->
+<section id="panel-changelog" data-view hidden>
+  <h1 class="page-heading" tabindex="-1">Changelog</h1>
+  <section class="panel">
+    <div class="panel-h"><h2>Release notes</h2><span class="muted" style="letter-spacing:.06em;text-transform:none">semantic versioning</span></div>
+    <div class="panel-b changelog">
+      <p class="muted" style="margin:0 0 10px;font-size:13px">Current firmware version: <b id="changelogVersion">—</b></p>
+
+      <h3>0.4.0</h3>
+      <ul>
+        <li>Redesigned the responsive dashboard with light and dark themes.</li>
+        <li>Added streaming diagnostics, a sanitized summary, and view-aware refresh.</li>
+      </ul>
+
+      <h3>0.3.0</h3>
+      <ul>
+        <li>Added I/Q transport counters to <code>/api/status</code>.</li>
+        <li>Report NVS write failures when saving settings.</li>
+      </ul>
+
+      <h3>0.2.1</h3>
+      <ul>
+        <li>Close the SpyServer connection on I/Q buffer overrun so the client can start a fresh stream.</li>
+      </ul>
+
+      <h3>0.2.0</h3>
+      <ul>
+        <li>Renamed <code>CONFIG_AIRSPY_EXPERIMENTAL_FFT_SERVER</code> to <code>CONFIG_AIRSPY_FFT_SERVER</code> (the FFT stream is stable).</li>
+        <li>Frequency-domain IQ balancer now estimates in a dedicated task, off the USB callback.</li>
+        <li>Single committed configuration (<code>sdkconfig.p4</code>); <code>sdkconfig.defaults</code> removed.</li>
+        <li>FFT/spectrum processing improved at the narrowest decimation stages.</li>
+        <li>Added CONTRIBUTING.md, SECURITY.md, .editorconfig and a dashboard screenshot.</li>
+      </ul>
+
+      <h3>0.1.1</h3>
+      <ul>
+        <li>IQ-balancer toggle now controls the compiled corrector (static or frequency-domain) and resets it on toggle.</li>
+        <li>Dashboard no longer loads Google Fonts — works fully offline.</li>
+        <li>"Reset settings to defaults" button and <code>/api/factory-reset</code> endpoint.</li>
+        <li>Validated the CI container image (<code>espressif/idf:v5.5.4</code>).</li>
+      </ul>
+
+      <h3>0.1.0</h3>
+      <ul>
+        <li>Airspy HF+ Discovery streaming over SpyServer (TCP 5555), one client, signed 16-bit I/Q at 768–12 kS/s.</li>
+        <li>Six-stage halfband decimation with &gt;79 dB alias rejection.</li>
+        <li>Software complex mixer and factory ppb oscillator calibration.</li>
+        <li>Receiver gain model: AGC, attenuation, LNA and AGC threshold, persisted in NVS.</li>
+        <li>Optional DC blocker and IQ-imbalance correctors.</li>
+        <li>On-device FFT spectrum with independent I/Q and FFT tuning.</li>
+        <li>Ethernet (DHCP/static), OTA updates, Airspy firmware update, web dashboard, history and settings.</li>
+      </ul>
+    </div>
+  </section>
+</section>
+
+</main>
+</div>
+
+<script>
+const el = id => document.getElementById(id);
+const mb = n => (n / 1048576).toFixed(2) + ' MiB';
+const css = (name, fallback) => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+let range = '5m', points = [], lastUptime = 0, psramActive = false;
+const color = key => css('--plot-' + key);
+const formatter = new Intl.NumberFormat('en-US');
+const count = n => Number.isFinite(n) ? formatter.format(n) : 'Unavailable';
+const kib = n => (n / 1024).toLocaleString('en-US', { maximumFractionDigits: 1 }) + ' KiB';
+const rate = n => Number.isFinite(n) && n > 0 ? (n / 1000).toFixed(0) + ' kS/s' : '—';
+let activeView = 'overview', latest = null, receivedAt = 0, historyAt = 0;
+let statusTimer, polling = false, historyBusy = false, requestedRange = '', attemptedTime = false;
+let lastUsb;
+const media = matchMedia('(prefers-color-scheme: light)');
+function savedTheme() {
+  try { return localStorage.getItem('espairspy-theme'); } catch { return null; }
+}
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  el('theme').textContent = theme === 'light' ? 'Dark theme' : 'Light theme';
+  graph();
+}
+applyTheme(savedTheme() || (media.matches ? 'light' : 'dark'));
+media.addEventListener('change', () => {
+  if (!savedTheme()) applyTheme(media.matches ? 'light' : 'dark');
+});
+el('theme').onclick = () => {
+  const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+  try { localStorage.setItem('espairspy-theme', next); } catch {}
+  applyTheme(next);
+};
+async function readApi(path, options = {}) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 4500);
+  try {
+    const response = await fetch(path, { cache: 'no-store', ...options, signal: controller.signal });
+    if (!response.ok) throw Error('HTTP ' + response.status);
+    return options.method === 'POST' ? null : await response.json();
+  } finally { clearTimeout(timeout); }
+}
+
+function drawGrid(x, w, h, unit, l0, r0, t0, b0, rows) {
+  const ink = css('--muted', '#5d7a6d'), grid = css('--line', '#12241d');
+  x.fillStyle = ink; x.strokeStyle = grid; x.lineWidth = 1;
+  for (let n = 0; n <= rows; n++) {
+    const y = b0 - (b0 - t0) * n / rows;
+    x.beginPath(); x.moveTo(l0, y); x.lineTo(r0, y); x.stroke();
+    x.fillText(Math.round(n * 100 / rows) + unit, 0, y + 4);
+  }
+}
+
+function graph() {
+  if (activeView !== 'statistics') return;
+  const c = el('chart'), dpr = Math.min(window.devicePixelRatio || 1, 2), w = c.clientWidth, h = c.clientHeight;
+  if (!w || !h) return;
+  c.width = w * dpr; c.height = h * dpr;
+  const x = c.getContext('2d'); x.scale(dpr, dpr);
+  x.font = '12px system-ui, sans-serif';
+  const l = 46, r = w - 10, t = 10, b = h - 28;
+  drawGrid(x, w, h, '%', l, r, t, b, 4);
+  const span = range === '5m' ? 300 : range === '1h' ? 3600 : 86400;
+  x.fillStyle = css('--muted', '#5d7a6d');
+  x.fillText(range === '5m' ? '-5 min' : range === '1h' ? '-1 hour' : '-1 day', l, b + 18);
+  x.textAlign = 'right'; x.fillText('now', r, b + 18); x.textAlign = 'left';
+  const series = [['cpu10', color('cpu')], ['ram10', color('ram')], ['flash10', color('flash')]];
+  if (psramActive) series.splice(2, 0, ['psram10', color('psram')]);
+  series.forEach(([k, color]) => {
+    x.strokeStyle = color; x.lineWidth = 1.6; x.beginPath();
+    let started = false, previous = 0;
+    points.forEach(p => {
+      const age = lastUptime - p.t;
+      if (age < 0 || age > span) return;
+      const px = r - age / span * (r - l), py = b - (b - t) * p[k] / 1000;
+      if (!started || p.t - previous > (range === '1d' ? 125 : 15)) { x.moveTo(px, py); started = true; }
+      else x.lineTo(px, py);
+      previous = p.t;
+    });
+    x.stroke();
+  });
+  if (!points.length) { x.fillStyle = css('--muted', '#5d7a6d'); x.fillText('No measurements available', l + 3, t + 22, r - l - 5); }
+  networkGraph(span);
+}
+
+function networkGraph(span) {
+  const c = el('networkChart'), dpr = Math.min(window.devicePixelRatio || 1, 2), w = c.clientWidth, h = c.clientHeight;
+  if (!w || !h) return;
+  c.width = w * dpr; c.height = h * dpr;
+  const x = c.getContext('2d'); x.scale(dpr, dpr);
+  x.font = '12px system-ui, sans-serif';
+  const l = 58, r = w - 10, t = 10, b = h - 28;
+  drawGrid(x, w, h, ' Mb/s', l, r, t, b, 4);
+  x.fillStyle = css('--muted', '#5d7a6d');
+  x.fillText(range === '5m' ? '-5 min' : range === '1h' ? '-1 hour' : '-1 day', l, b + 18);
+  x.textAlign = 'right'; x.fillText('now', r, b + 18); x.textAlign = 'left';
+  x.strokeStyle = color('cpu'); x.lineWidth = 1.6; x.beginPath();
+  let started = false, previous = 0;
+  points.forEach(p => {
+    const age = lastUptime - p.t;
+    if (age < 0 || age > span) return;
+    const px = r - age / span * (r - l), py = b - (b - t) * Math.min(p.net_kbps || 0, 100000) / 100000;
+    if (!started || p.t - previous > (range === '1d' ? 125 : 15)) { x.moveTo(px, py); started = true; }
+    else x.lineTo(px, py);
+    previous = p.t;
+  });
+  x.stroke();
+}
+
+function showMemory(s) {
+  const ramUsed = Math.max(0, s.internal_heap_total - s.internal_heap_free);
+  el('ram').textContent = kib(ramUsed);
+  el('ramDetail').textContent = kib(s.internal_heap_free) + ' free of ' + kib(s.internal_heap_total);
+  if (s.psram_state === 'active') {
+    const psramUsed = Math.max(0, s.psram_heap_total - s.psram_heap_free);
+    el('psram').textContent = mb(psramUsed);
+    el('psramDetail').textContent = mb(s.psram_heap_free) + ' free of ' + mb(s.psram_heap_total);
+  } else {
+    el('psram').textContent = s.psram_state === 'disabled' ? 'Off' : 'N/A';
+    el('psramDetail').textContent = '32 MiB per U213 specification';
+  }
+}
+
+function renderStatus(s) {
+  const now = performance.now();
+  const prev = lastUsb;
+  const streaming = s.iq_streaming ?? Boolean(s.spy_client && s.iq_sample_rate);
+  const comparable = streaming && prev?.streaming && now > prev.at &&
+    s.uptime_s >= prev.uptime && s.input_iq_samples >= prev.samples;
+  const usbMbps = comparable ? (s.input_iq_samples - prev.samples) * 32 / ((now - prev.at) * 1000) : NaN;
+  lastUsb = { at: now, uptime: s.uptime_s, samples: s.input_iq_samples, streaming };
+  el('streamRx').textContent = Number.isFinite(usbMbps) ? usbMbps.toFixed(2) + ' Mb/s' : '—';
+  el('firmwareBadge').textContent = 'Firmware ' + s.version;
+  el('streamClients').textContent = (s.spy_client ? '1' : '0') + ' / 1';
+  el('streamRate').textContent = streaming ? rate(s.iq_sample_rate) : 'Idle';
+  el('streamFormat').textContent = 'Signed 16-bit I/Q';
+  el('streamNet').textContent = Number.isFinite(s.network_kbps) ? (s.network_kbps / 1000).toFixed(2) + ' Mb/s' : 'Unavailable';
+  el('streamLost').textContent = count(s.iq_ring_lost_samples);
+  el('streamRing').textContent = s.iq_ring_capacity_bytes && Number.isFinite(s.iq_ring_peak_estimate_bytes)
+    ? kib(s.iq_ring_peak_estimate_bytes) + ' / ' + kib(s.iq_ring_capacity_bytes) : 'Unavailable';
+  el('streamEmpty').textContent = count(s.iq_empty_reads);
+  el('streamSent').textContent = count(s.iq_samples_sent);
+  el('streamFailures').textContent = count(s.iq_send_failures);
+  el('streamSendTime').textContent = Number.isFinite(s.iq_max_send_us) ? (s.iq_max_send_us / 1000).toFixed(2) + ' ms' : 'Unavailable';
+  el('cpu').textContent = (s.cpu10 / 10).toFixed(1) + '%';
+  el('cpuCores').textContent = s.cpu_freq_mhz + ' MHz · core 0 ' + (s.cpu0_10 / 10).toFixed(1) + '% · core 1 ' + (s.cpu1_10 / 10).toFixed(1) + '%';
+  showMemory(s);
+  el('ethernetLink').textContent = s.ethernet_mbps ? s.ethernet_mbps + ' Mb/s · ' + s.ethernet_duplex + ' duplex' : 'Unknown';
+  el('flash').textContent = (s.flash10 / 10).toFixed(1) + '%';
+  el('flashDetail').textContent = mb(s.flash_reserved) + ' / ' + mb(s.flash_total) + ' allocated';
+  el('app').textContent = mb(s.app_size);
+  el('slot').textContent = 'Active: ' + s.slot;
+  el('version').textContent = s.version;
+  el('uptime').textContent = Math.floor(s.uptime_s / 3600) + ' h ' + Math.floor(s.uptime_s % 3600 / 60) + ' min';
+  el('airspy').textContent = s.airspy_connected ? 'Connected' : 'Disconnected';
+  el('overviewAirspy').textContent = s.airspy_connected ? 'Connected' : 'Disconnected';
+  el('overviewSpy').textContent = s.iq_streaming ? 'Streaming' : s.spy_client ? 'Client connected' : s.spy_listening === true ? 'Listening on TCP 5555' : s.spy_listening === false ? 'Not listening' : 'No client reported';
+  el('overviewFrequency').textContent = s.frequency ? (s.frequency / 1000000).toFixed(6) : '—';
+  el('overviewRate').textContent = s.iq_streaming === false ? 'Idle' : rate(s.iq_sample_rate);
+  el('airspyFirmware').textContent = s.airspy_firmware || 'Unavailable';
+  const av = s.airspy_firmware || '', avv = av.endsWith('-BB') ? 'BB' : av.endsWith('-CD') ? 'CD' : '';
+  el('airspyExpected').textContent = avv ? 'hfplus-firmware-' + avv.toLowerCase() + '.bin' : 'unknown (receiver not connected)';
+  el('spy').textContent = el('overviewSpy').textContent;
+  el('sampleRate').textContent = rate(s.sample_rate);
+  el('iqRate').textContent = s.iq_streaming === false ? 'Idle' : rate(s.iq_sample_rate);
+  el('frequency').textContent = s.frequency ? (s.frequency / 1000000).toFixed(6) + ' MHz' : '—';
+  el('iqFrequency').textContent = s.iq_frequency ? (s.iq_frequency / 1000000).toFixed(6) + ' MHz' : 'No client';
+  el('receiverGain').textContent = s.receiver_gain === 0 ? 'Automatic (AGC)' : 'Attenuation ' + ((9 - s.receiver_gain) * 6) + ' dB';
+  el('loFrequency').textContent = s.lo_frequency ? (s.lo_frequency / 1000000).toFixed(6) + ' MHz' : '—';
+  el('calibration').textContent = s.calibration_valid ? s.calibration_ppb + ' ppb' : 'Unavailable';
+  el('usbCompletions').textContent = s.usb_completions.toLocaleString('en-US');
+  el('usbEmpty').textContent = s.usb_empty.toLocaleString('en-US');
+  el('usbBlocks').textContent = s.usb_blocks.toLocaleString('en-US');
+  el('drops').textContent = s.dropped_blocks.toLocaleString('en-US');
+  el('inputRail').textContent = s.input_near_rail.toLocaleString('en-US') + ' / ' + s.input_iq_samples.toLocaleString('en-US');
+  el('mixerClipped').textContent = s.mixer_clipped_components.toLocaleString('en-US');
+  el('clipped').textContent = s.digital_clipped_components.toLocaleString('en-US');
+  el('activeClients').textContent = s.spy_client ? '1' : '0';
+  el('connections').textContent = s.spy_connections.toLocaleString('en-US');
+  el('traffic').textContent = mb(s.spy_bytes);
+  el('networkSpeed').textContent = (s.network_kbps / 1000).toFixed(2) + ' Mb/s';
+  el('heapMin').textContent = mb(s.heap_min);
+  el('heapLargest').textContent = mb(s.heap_largest);
+  el('tasks').textContent = s.tasks;
+  el('nvs').textContent = s.nvs_used + ' / ' + s.nvs_total + ' items';
+  el('idf').textContent = s.idf_version;
+  el('ovAirspyFw').textContent = s.airspy_firmware || 'Unavailable';
+  el('ovGain').textContent = s.receiver_gain === 0 ? 'Automatic (AGC)' : 'Attenuation ' + ((9 - s.receiver_gain) * 6) + ' dB';
+  el('ovCal').textContent = s.calibration_valid ? s.calibration_ppb + ' ppb' : 'Unavailable';
+  el('ovBlocks').textContent = s.usb_blocks.toLocaleString('en-US');
+  el('ovDrops').textContent = s.dropped_blocks.toLocaleString('en-US');
+  el('ovSpeed').textContent = (s.network_kbps / 1000).toFixed(2) + ' Mb/s';
+  el('ovSent').textContent = mb(s.spy_bytes);
+  el('ovUptime').textContent = Math.floor(s.uptime_s / 3600) + ' h ' + Math.floor(s.uptime_s % 3600 / 60) + ' min';
+  el('systemBoard').textContent = 'M5Stack Unit PoE-P4 (U213)';
+  el('systemChip').textContent = 'ESP32-P4 · RISC-V';
+  el('systemVersion').textContent = s.version;
+  el('systemUptime').textContent = el('uptime').textContent;
+  el('systemSlot').textContent = s.slot || 'Unavailable';
+  el('systemEthernet').textContent = el('ethernetLink').textContent;
+  el('systemHeap').textContent = Number.isFinite(s.internal_heap_free) ? kib(s.internal_heap_free) : 'Unavailable';
+  el('systemPsram').textContent = s.psram_state === 'active' ? mb(s.psram_heap_free) : 'Unavailable';
+  el('changelogVersion').textContent = s.version;
+  psramActive = s.psram_state === 'active';
+  el('psramLegend').hidden = !psramActive;
+}
+
+async function refreshHistory(force = false) {
+  if (document.hidden || activeView !== 'statistics' || historyBusy || (!force && Date.now() - historyAt < 15000)) return;
+  historyBusy = true;
+  requestedRange = range;
+  const loadingRange = range;
+  try {
+    const history = await readApi('/api/history?range=' + loadingRange);
+    if (loadingRange !== range) return;
+    points = history.samples;
+    lastUptime = latest?.history_now ?? 0;
+    el('historyNote').textContent = !latest?.history_ready ? 'History storage unavailable'
+      : latest.history_now < 1700000000 ? 'Waiting for time synchronization'
+      : latest.history_errors ? 'History storage error'
+      : points.length ? 'Measurements from device history' : 'No measurements in this period';
+    graph();
+  } catch {
+    if (loadingRange === range) {
+      points = [];
+      el('historyNote').textContent = 'History unavailable. Live status is refreshed separately.';
+      graph();
+    }
+  } finally {
+    historyAt = Date.now(); historyBusy = false;
+    if (requestedRange !== range) void refreshHistory(true);
+  }
+  if (!document.hidden && activeView === 'statistics') await refreshSpectrum();
+}
+
+function setConnection(message, kind) {
+  const badge = el('connection');
+  if (badge.textContent !== message) badge.textContent = message;
+  badge.className = 'pill ' + kind;
+}
+
+async function poll() {
+  clearTimeout(statusTimer);
+  if (polling || document.hidden) return;
+  polling = true;
+  let delay = 5000;
+  try {
+    const s = await readApi('/api/status');
+    if (latest && s.uptime_s < latest.uptime_s) {
+      points = []; historyAt = 0; lastUsb = null; attemptedTime = false;
+    }
+    renderStatus(s);
+    latest = s; receivedAt = Date.now();
+    setConnection('Connected', 'ok');
+    el('freshness').hidden = true;
+    el('copyDiagnostics').disabled = false;
+    if (s.history_now < 1700000000 && !attemptedTime) {
+      attemptedTime = true;
+      try {
+        await readApi('/api/time', { method:'POST', headers:{'Content-Type':'text/plain','X-Device-Time':'1'},
+          body:String(Math.floor(Date.now() / 1000)) });
+      } catch { /* History stays in the waiting state until the device has a clock. */ }
+    }
+    await refreshHistory();
+  } catch {
+    delay = 10000;
+    lastUsb = null;
+    setConnection('Unreachable', 'bad');
+    el('freshness').textContent = receivedAt
+      ? 'Telemetry is stale. Last update at ' + new Date(receivedAt).toLocaleTimeString('en-US') + '.'
+      : 'Waiting for device telemetry. Retrying automatically.';
+    el('freshness').hidden = false;
+    el('copyDiagnostics').disabled = true;
+  } finally {
+    polling = false;
+    if (!document.hidden) statusTimer = setTimeout(poll, delay);
+  }
+}
+
+el('copyDiagnostics').onclick = async () => {
+  if (!latest || !el('freshness').hidden) return;
+  const fields = ['version', 'idf_version', 'uptime_s', 'sample_rate', 'iq_sample_rate', 'airspy_connected',
+    'airspy_firmware', 'spy_listening', 'iq_streaming', 'ethernet_mbps', 'ethernet_duplex', 'dropped_blocks',
+    'usb_completions', 'usb_empty', 'iq_ring_lost_samples', 'iq_ring_peak_estimate_bytes', 'iq_send_failures',
+    'iq_max_send_us', 'internal_heap_free', 'heap_min', 'psram_state'];
+  const summary = JSON.stringify(Object.fromEntries(fields.map(key => [key, latest[key]])), null, 2);
+  try {
+    await navigator.clipboard.writeText(summary);
+    el('copyResult').textContent = 'Diagnostics copied.';
+  } catch {
+    const output = el('diagnosticText');
+    output.textContent = summary; output.hidden = false; output.focus();
+    const selected = document.createRange();
+    selected.selectNodeContents(output);
+    getSelection().removeAllRanges(); getSelection().addRange(selected);
+    el('copyResult').textContent = 'Diagnostics selected. Use your browser’s copy command.';
+  }
+};
+
+async function refreshSpectrum() {
+  try {
+    const s = await readApi('/api/spectrum-stats');
+    el('spectrumStats').hidden = false;
+    el('fftFrames').textContent = s.frames.toLocaleString('en-US');
+    el('fftBlocks').textContent = s.processed.toLocaleString('en-US');
+    el('fftDrops').textContent = s.dropped.toLocaleString('en-US');
+    el('fftResets').textContent = s.resets.toLocaleString('en-US');
+    el('fftMaxTime').textContent = (s.max_process_us / 1000).toFixed(1) + ' ms';
+  } catch { el('spectrumStats').hidden = true; }
+}
+
+let settingsNetMode = 0;
+async function loadSettings() {
+  try {
+    const s = await readApi('/api/settings');
+    el('saveSettings').disabled = false;
+    el('saveRestart').disabled = false;
+    settingsNetMode = s.net_mode ? 1 : 0;
+    document.querySelectorAll('#netMode [data-net]').forEach(b => b.classList.toggle('active', Number(b.dataset.net) === settingsNetMode));
+    el('staticFields').hidden = settingsNetMode !== 1;
+    el('setIp').value = s.ip || '';
+    el('setMask').value = s.netmask || '';
+    el('setGw').value = s.gateway || '';
+    el('setDns').value = s.dns || '';
+    el('setDc').checked = !!s.dc_block;
+    el('setIq').checked = !!s.iq_balance;
+    el('setDc').disabled = !s.dc_available;
+    el('setIq').disabled = !s.iq_available;
+    el('setGain').value = String(s.gain ?? 0);
+    el('setThreshold').value = String(s.agc_threshold ?? 0);
+    el('setLna').checked = !!s.lna;
+    el('expNote').textContent = (s.dc_available || s.iq_available)
+      ? 'Changes are applied immediately, without a restart.'
+      : 'No experimental DSP stages compiled into this firmware.';
+    el('setCurrentIp').textContent = location.hostname;
+  } catch (e) {
+    el('settingsResult').textContent = 'Failed to load settings. Reopen Settings to retry.';
+    el('saveSettings').disabled = true;
+    el('saveRestart').disabled = true;
+  }
+}
+
+document.querySelectorAll('#netMode [data-net]').forEach(b => b.onclick = () => {
+  settingsNetMode = Number(b.dataset.net);
+  document.querySelectorAll('#netMode [data-net]').forEach(v => v.classList.toggle('active', v === b));
+  el('staticFields').hidden = settingsNetMode !== 1;
+});
+
+function settingsBody() {
+  const p = new URLSearchParams();
+  p.set('net_mode', String(settingsNetMode));
+  if (settingsNetMode === 1) {
+    for (const [id, name, required] of [['setIp','IP address',true],['setMask','Netmask',true],
+      ['setGw','Gateway',false],['setDns','DNS',false]]) {
+      const value = el(id).value.trim();
+      if (value || required) {
+        const parts = value.split('.');
+        if (parts.length !== 4 || !parts.every(part => /^\d{1,3}$/.test(part) && Number(part) <= 255)) {
+          el(id).focus();
+          throw Error(name + ' must be a valid IPv4 address.');
+        }
+      }
+    }
+    p.set('ip', el('setIp').value.trim());
+    p.set('netmask', el('setMask').value.trim());
+    p.set('gateway', el('setGw').value.trim());
+    p.set('dns', el('setDns').value.trim());
+  }
+  p.set('dc_block', el('setDc').checked ? '1' : '0');
+  p.set('iq_balance', el('setIq').checked ? '1' : '0');
+  p.set('gain', el('setGain').value);
+  p.set('lna', el('setLna').checked ? '1' : '0');
+  p.set('agc_threshold', el('setThreshold').value);
+  return p.toString();
+}
+
+async function postSettings() {
+  const r = await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Settings': '1' }, body: settingsBody() });
+  if (!r.ok) throw Error(await r.text());
+  return await r.json();
+}
+
+el('saveSettings').onclick = async () => {
+  const button = el('saveSettings'), o = el('settingsResult');
+  button.disabled = true; o.textContent = 'Saving…';
+  try {
+    const s = await postSettings();
+    o.textContent = s.restart_required ? 'Saved. Network changes take effect after a restart.' : 'Saved.';
+    if (s.restart_required) el('saveRestart').hidden = false;
+    await loadSettings();
+  } catch (e) { o.textContent = 'Save failed: ' + e.message; button.disabled = false; }
+};
+
+el('saveRestart').onclick = async () => {
+  if (!confirm('Apply the saved network settings and restart the receiver node?')) return;
+  const button = el('saveRestart'), o = el('settingsResult');
+  button.disabled = true; o.textContent = 'Saving and restarting…';
+  try {
+    await postSettings();
+    await readApi('/api/restart', { method:'POST', headers:{'X-Restart':'1'} });
+    o.textContent = 'Restart requested. Reconnect using the configured address.';
+  } catch (e) { o.textContent = 'Failed: ' + e.message; button.disabled = false; }
+};
+
+el('factoryReset').onclick = async () => {
+  const o = el('resetResult');
+  if (!confirm('Reset all settings to defaults and restart the device?')) return;
+  o.textContent = 'Resetting…';
+  try {
+    await readApi('/api/factory-reset', { method: 'POST', headers: { 'X-Factory-Reset': '1' } });
+    o.textContent = 'Settings reset. The device is restarting.';
+  } catch (e) { o.textContent = 'Reset failed: ' + e.message; }
+};
+
+document.querySelectorAll('[data-panel]').forEach(b => b.onclick = () => {
+  document.querySelectorAll('[data-panel]').forEach(v => {
+    const active = v === b;
+    v.classList.toggle('active', active);
+    if (active) v.setAttribute('aria-current', 'page'); else v.removeAttribute('aria-current');
+  });
+  document.querySelectorAll('[data-view]').forEach(v => v.hidden = v.id !== 'panel-' + b.dataset.panel);
+  activeView = b.dataset.panel;
+  el('panel-' + activeView).querySelector('h1').focus();
+  if (activeView === 'statistics') { graph(); void poll(); }
+  if (b.dataset.panel === 'settings') loadSettings();
+});
+
+document.querySelectorAll('[data-range]').forEach(b => b.onclick = () => {
+  range = b.dataset.range;
+  document.querySelectorAll('[data-range]').forEach(v => v.classList.toggle('active', v === b));
+  document.querySelectorAll('[data-range]').forEach(v => v.setAttribute('aria-pressed', String(v === b)));
+  points = [];
+  el('historyNote').textContent = 'Loading history…';
+  graph();
+  void refreshHistory(true);
+});
+el('nodeIp').textContent = location.hostname;
+document.querySelector('[data-range="5m"]').setAttribute('aria-pressed', 'true');
+window.addEventListener('resize', graph);
+document.addEventListener('visibilitychange', () => {
+  clearTimeout(statusTimer);
+  if (!document.hidden) { lastUsb = null; void poll(); }
+});
+void poll();
+
+el('airspyCheck').onclick = async () => {
+  const f = el('airspyFile').files[0], o = el('airspyResult'), b = el('airspyCheck');
+  if (!f) { o.textContent = 'Choose a firmware file first.'; return; }
+  b.disabled = true; o.textContent = 'Verifying file…';
+  try {
+    const r = await fetch('/api/airspy/verify', { method: 'POST', headers: { 'Content-Type': 'application/octet-stream', 'X-Airspy-Verify': '1', 'X-Airspy-Filename': f.name }, body: f });
+    if (!r.ok) throw Error(await r.text());
+    const data = await r.json();
+    o.textContent = 'File recognized: ' + data.image + '. The Airspy was not updated.';
+  } catch (e) { o.textContent = 'Verification failed: ' + e.message; }
+  finally { b.disabled = false; }
+};
+
+let airspyUpdating = false;
+el('airspyUpdate').onclick = async () => {
+  const f = el('airspyFile').files[0], o = el('airspyUpdateResult'), b = el('airspyUpdate');
+  if (!f) { o.textContent = 'Choose a firmware file first.'; return; }
+  if (airspyUpdating) { o.textContent = 'An update is already in progress.'; return; }
+  if (!confirm('Update the Airspy receiver firmware? Reception will be interrupted.')) return;
+  b.disabled = true; airspyUpdating = true; o.textContent = 'Uploading and updating…';
+  try {
+    const r = await fetch('/api/airspy/update', { method: 'POST', headers: { 'Content-Type': 'application/octet-stream', 'X-Airspy-Update': '1', 'X-Airspy-Filename': f.name }, body: f });
+    if (!r.ok) throw Error(await r.text());
+    await r.json();
+    for (const deadline = Date.now() + 300000;;) {
+      if (Date.now() >= deadline) throw Error('Status timed out; check the receiver state before retrying.');
+      const st = await readApi('/api/airspy/update-status');
+      o.textContent = (st.progress ? '[' + st.progress + '%] ' : '') + st.message;
+      if (st.state === 'done') { o.textContent = 'The Airspy was updated and the calibration restored.'; break; }
+      if (st.state === 'failed') { o.textContent = 'Update failed: ' + st.message; break; }
+      await new Promise(res => setTimeout(res, 500));
+    }
+  } catch (e) { o.textContent = 'Update failed: ' + e.message; }
+  finally { b.disabled = false; airspyUpdating = false; }
+};
+
+el('airspyRecover').onclick = async () => {
+  if (airspyUpdating || !confirm('Recover the Airspy receiver through its bootloader?')) return;
+  const b = el('airspyRecover'), o = el('recoverResult');
+  b.disabled = true; airspyUpdating = true; o.textContent = 'Recovering receiver…';
+  try {
+    const r = await fetch('/api/airspy/recover', { method: 'POST', headers: { 'X-Airspy-Recover': '1' } });
+    if (!r.ok) throw Error(await r.text());
+    for (const deadline = Date.now() + 300000;;) {
+      if (Date.now() >= deadline) throw Error('Status timed out; check the receiver state before retrying.');
+      const st = await readApi('/api/airspy/update-status'); o.textContent = st.message;
+      if (st.state === 'done') { o.textContent = 'Receiver recovered.'; break; }
+      if (st.state === 'failed') { o.textContent = 'Recovery failed: ' + st.message; break; }
+      await new Promise(res => setTimeout(res, 500));
+    }
+  } catch (e) { o.textContent = 'Recovery status: ' + e.message; }
+  finally { b.disabled = false; airspyUpdating = false; }
+};
+
+el('fullRestart').onclick = async () => {
+  if (airspyUpdating || !confirm('Restart the ESP and receiver? Active streams will disconnect.')) return;
+  const o = el('recoverResult'); o.textContent = 'Restarting…';
+  try {
+    await readApi('/api/restart', { method: 'POST', headers: { 'X-Restart': '1' } });
+    o.textContent = 'Restart requested.';
+  } catch (e) { o.textContent = 'Restart failed: ' + e.message; }
+};
+
+el('upload').onclick = async () => {
+  const f = el('file').files[0], o = el('result'), b = el('upload');
+  if (!f) { o.textContent = 'Choose a firmware file first.'; return; }
+  if (airspyUpdating || !confirm('Install the ESP firmware and restart the node? Active streams will disconnect.')) return;
+  b.disabled = true; o.textContent = 'Uploading…';
+  try {
+    const r = await fetch('/api/ota', { method: 'POST', headers: { 'Content-Type': 'application/octet-stream', 'X-OTA-Upload': '1' }, body: f });
+    const t = await r.text();
+    if (!r.ok) throw Error(t);
+    o.textContent = t;
+  } catch (e) { o.textContent = 'Update failed: ' + e.message; }
+  finally { b.disabled = false; }
+};
+</script>
+</body>
+</html>

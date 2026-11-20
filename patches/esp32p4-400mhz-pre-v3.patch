@@ -1,0 +1,28 @@
+diff --git a/components/esp_hw_support/port/esp32p4/rtc_clk.c b/components/esp_hw_support/port/esp32p4/rtc_clk.c
+index c93626d7..a0350fff 100644
+--- a/components/esp_hw_support/port/esp32p4/rtc_clk.c
++++ b/components/esp_hw_support/port/esp32p4/rtc_clk.c
+@@ -240,6 +240,7 @@ static void rtc_clk_cpu_freq_to_cpll_mhz(int cpu_freq_mhz, hal_utils_clk_div_t *
+     uint32_t apb_divider = 1;
+ #if CONFIG_ESP32P4_SELECTS_REV_LESS_V3
+     switch (cpu_freq_mhz) {
++    case 400:
+     case 360:
+         mem_divider = 2;
+         apb_divider = 2;
+@@ -351,6 +352,15 @@ bool rtc_clk_cpu_freq_mhz_to_config(uint32_t freq_mhz, rtc_cpu_freq_config_t *ou
+         source = SOC_CPU_CLK_SRC_CPLL;
+         source_freq_mhz = CLK_LL_PLL_360M_FREQ_MHZ;
+         divider.integer = 1;
++    } else if (freq_mhz == 400) {
++        /* Pre-v3 silicon: the analog CPLL already supports 400 MHz on rev <= 1
++         * (see clk_ll_cpll_set_config). Allow selecting it when
++         * CONFIG_ESP_FORCE_400MHZ_ON_REV_LESS_V3 is enabled; stability must be
++         * validated per chip (Espressif qualification applies). */
++        real_freq_mhz = freq_mhz;
++        source = SOC_CPU_CLK_SRC_CPLL;
++        source_freq_mhz = CLK_LL_PLL_400M_FREQ_MHZ;
++        divider.integer = 1;
+     } else {
+         // unsupported frequency
+         return false;

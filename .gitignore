@@ -1,0 +1,33 @@
+# Build output and generated config
+build/
+build-*/
+sdkconfig
+sdkconfig.old
+managed_components/
+dependencies.lock
+
+# Editor / OS noise
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Local hardware recovery, captures and configuration
+/recovery/
+__pycache__/
+*.py[cod]
+*.log
+*.bin
+*.elf
+*.map
+.env
+.env.*
+
+# Local dashboard capture contains network details
+/docs/dashboard.png
+
+# Local distribution output and tooling state
+/dist/
+/.agents/
+/.codex/
+/.aws/

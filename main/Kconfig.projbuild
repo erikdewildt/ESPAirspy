@@ -1,0 +1,62 @@
+menu "Airspy development"
+config AIRSPY_FFT_SERVER
+    bool "Advertise SpyServer FFT stream"
+    depends on !AIRSPY_SPECTRUM_CAPTURE_TEST
+    default n
+    help
+        Enables FFT+IQ with independently tuned I/Q. Narrow FFT settings can
+        heavily load the USB core; monitor dropped blocks under actual load.
+config AIRSPY_FFT_BENCHMARK
+    bool "Run temporary on-device FFT benchmark"
+    default n
+    help
+        Runs a timed synthetic FFT workload for performance validation.
+        Keep disabled in normal receiver firmware.
+config AIRSPY_FFT_CAPTURE_TEST
+    bool "Run temporary live USB spectrum capture test"
+    default n
+    help
+        Captures occasional real I/Q blocks and computes spectra without
+        advertising an FFT stream. Keep disabled in normal firmware.
+config AIRSPY_SPECTRUM_CAPTURE_TEST
+    bool "Run continuous zoomed spectrum pipeline test"
+    default n
+    help
+        Processes complete USB blocks in a bounded nonblocking worker.
+        This diagnostic does not advertise a SpyServer FFT stream.
+config AIRSPY_SPECTRUM_TEST_STAGE
+    int "Spectrum test decimation stage"
+    depends on AIRSPY_SPECTRUM_CAPTURE_TEST
+    range 0 6
+    default 3
+config AIRSPY_IQ_BALANCE
+    bool "Apply static IQ-imbalance (image-rejection) correction"
+    default n
+    help
+        Estimates the Airspy HF+ I/Q gain and phase imbalance from the streaming
+        signal and applies a Gram-Schmidt orthogonalization at the full sample
+        rate, improving image rejection and thus SNR when a strong signal sits
+        in the image band. Not yet hardware-validated; disable it if the client
+        (e.g. SDROxide) already applies its own IQ correction.
+
+config AIRSPY_IQ_BALANCE_FREQ
+    bool "Apply frequency-domain adaptive IQ-imbalance correction"
+    depends on !AIRSPY_IQ_BALANCE
+    default n
+    help
+        Frequency-domain port of the upstream libairspyhf iqbalancer.c: cancels
+        DC, correlates each FFT bin with its image, and adapts the phase and
+        amplitude correction with a perturbed line search. Robust to DC offset
+        and to asymmetric spectra that bias the static whole-signal estimate.
+        Runs a few FFT passes per second on the USB core. Disable it if the
+        client already applies its own IQ correction.
+config AIRSPY_DC_REMOVE
+    bool "Remove the baseband DC offset (DC blocker)"
+    default n
+    help
+        Applies a first-order high-pass (~12 Hz cutoff at 768 kS/s) to the raw
+        I/Q stream, removing the HF+ LO-leakage DC spike at the passband center.
+        This un-masks weak signals within a few Hz of center and keeps the DC
+        offset from biasing the IQ-imbalance estimate. It also attenuates any
+        signal within ~12 Hz of the center frequency.
+endmenu

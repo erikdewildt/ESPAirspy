@@ -1,0 +1,54 @@
+diff --git a/components/esp_psram/device/esp_psram_impl_ap_hex.c b/components/esp_psram/device/esp_psram_impl_ap_hex.c
+index e7b7001f..88cb9428 100644
+--- a/components/esp_psram/device/esp_psram_impl_ap_hex.c
++++ b/components/esp_psram/device/esp_psram_impl_ap_hex.c
+@@ -13,6 +13,8 @@
+ #include "esp_private/esp_psram_impl.h"
+ #include "hal/psram_ctrlr_ll.h"
+ #include "hal/mspi_ll.h"
++#include "hal/mmu_ll.h"
++#include "esp_rom_sys.h"
+ #include "clk_ctrl_os.h"
+ 
+ // Reset and Clock Control registers are mixing with other peripherals, so we need to use a critical section
+@@ -409,6 +411,11 @@ static void s_configure_psram_ecc(void)
+ 
+ esp_err_t esp_psram_impl_enable(void)
+ {
++    /* MSPI-749 (also observed on v1.3 pre-production silicon): the PSRAM MSPI
++     * read-request channel can spuriously return an error on the first couple
++     * of register accesses, which the CPU surfaces as a Load access fault.
++     * Suppress the core error response for the duration of the init. */
++    psram_ctrlr_ll_disable_core_err_resp();
+ #if SOC_CLK_MPLL_SUPPORTED
+     periph_rtc_mpll_acquire();
+     uint32_t real_mpll_freq = 0;
+@@ -452,8 +459,20 @@ esp_err_t esp_psram_impl_enable(void)
+ #endif
+     s_init_psram_mode_reg(PSRAM_CTRLR_LL_MSPI_ID_3, &mode_reg);
+ 
++    /* MSPI-749 (also on v1.3): warm up the PSRAM MSPI read-request channel
++     * with two dummy AXI reads before the first real read. Otherwise the first
++     * read returns garbage and the connectivity check below fails. */
++    {
++        volatile uint32_t dummy __attribute__((unused)) = 0;
++        mmu_ll_write_entry(1, 0, 0, MMU_TARGET_PSRAM0);
++        dummy = *(volatile uint32_t *)0x88000000;
++        dummy = *(volatile uint32_t *)0x88000080;
++        esp_rom_delay_us(1);
++    }
++
+     if (s_check_psram_connected(PSRAM_CTRLR_LL_MSPI_ID_3) != ESP_OK) {
+         ESP_EARLY_LOGE(TAG, "PSRAM chip is not connected");
++        psram_ctrlr_ll_enable_core_err_resp();
+         return ESP_ERR_NOT_SUPPORTED;
+     }
+ 
+@@ -473,6 +492,7 @@ esp_err_t esp_psram_impl_enable(void)
+     mspi_timing_psram_tuning();
+     psram_ctrlr_ll_enable_variable_dummy(PSRAM_CTRLR_LL_MSPI_ID_2, true);
+     psram_ctrlr_ll_enable_variable_dummy(PSRAM_CTRLR_LL_MSPI_ID_3, true);
++    psram_ctrlr_ll_enable_core_err_resp();
+ 
+     return ESP_OK;
+ }
