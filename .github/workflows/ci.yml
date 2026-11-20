@@ -46,7 +46,7 @@ jobs:
           retention-days: 30
 
   release:
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
     needs: firmware
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -61,9 +61,41 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          RELEASE_TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
           cd dist
           sha256sum --check SHA256SUMS
-          gh release create "$RELEASE_TAG" ./* --verify-tag --generate-notes --title "ESPAirspy $RELEASE_TAG"
+          if [[ "$GITHUB_REF_TYPE" == tag ]]; then
+            RELEASE_TAG="$GITHUB_REF_NAME"
+          else
+            VERSION=$(sed -n 's/^set(PROJECT_VER "\([0-9][0-9.]*\)")$/\1/p' ../CMakeLists.txt)
+            [[ "$VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
+            RELEASE_TAG="v$VERSION"
+          fi
+
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists; no duplicate release created."
+            exit 0
+          fi
+
+          if [[ "$GITHUB_REF_TYPE" == branch ]]; then
+            LATEST_TAG=$(gh release view --json tagName --jq .tagName 2>/dev/null || true)
+            if [[ -n "$LATEST_TAG" ]]; then
+              LATEST_VERSION="${LATEST_TAG#v}"
+              RELEASE_VERSION="${RELEASE_TAG#v}"
+              HIGHEST_VERSION=$(printf '%s\n%s\n' "$LATEST_VERSION" "$RELEASE_VERSION" | sort -V | tail -n1)
+              if [[ "$HIGHEST_VERSION" != "$RELEASE_VERSION" ]]; then
+                echo "Refusing to publish $RELEASE_TAG: latest release is $LATEST_TAG." >&2
+                exit 1
+              fi
+            fi
+
+            EXISTING_TAG_SHA=$(gh api "repos/$GH_REPO/commits/$RELEASE_TAG" --jq .sha 2>/dev/null || true)
+            if [[ -n "$EXISTING_TAG_SHA" && "$EXISTING_TAG_SHA" != "$GITHUB_SHA" ]]; then
+              echo "Tag $RELEASE_TAG already points to a different commit." >&2
+              exit 1
+            fi
+            gh release create "$RELEASE_TAG" ./* --target "$GITHUB_SHA" --generate-notes --title "ESPAirspy $RELEASE_TAG"
+          else
+            gh release create "$RELEASE_TAG" ./* --verify-tag --generate-notes --title "ESPAirspy $RELEASE_TAG"
+          fi

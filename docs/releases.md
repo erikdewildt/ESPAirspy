@@ -4,8 +4,9 @@ The default branch is `main`. The workflow in `.github/workflows/ci.yml`
 runs host regressions and dashboard fixtures before building with
 `espressif/idf:v5.5.4`. It uses the checked-in configuration and `build.sh`
 SDK patches, then merges the factory image and uploads the distribution.
-Pull requests use `pull_request` with read-only repository permissions.
-Only the tag release job receives permission to publish releases.
+Pull requests use `pull_request` with read-only repository permissions. The
+release job gets `contents: write` only after the host tests and firmware build
+pass.
 
 ## Initial publication
 
@@ -34,7 +35,14 @@ Builds are not published until this repository is pushed to GitHub.
 
 For a firmware change, update `PROJECT_VER` in `CMakeLists.txt`,
 `CHANGELOG.md` and the in-app changelog together. Merge the pull request to
-`main` and wait for CI. Tag that reviewed commit with the matching version:
+`main` and wait for CI. When the tests and firmware build pass, CI automatically
+creates the matching `vX.Y.Z` tag and GitHub Release if that version has not
+already been released. The release contains the OTA app, merged factory image,
+installation instructions, build identity, changelog, license notices and
+checksums. A push to `main` without a version bump still builds and tests, but
+does not create a duplicate release.
+
+Manual publication for a matching version tag is also supported:
 
 ```sh
 git switch main
@@ -45,13 +53,12 @@ git push origin v0.4.0
 
 Use the actual version instead of `0.4.0` for later releases. A mismatched tag
 fails before building. The tag workflow repeats tests and builds, then creates
-a GitHub Release containing the OTA app, merged factory image, installation
-instructions, build identity, changelog, license notices and checksums.
-Do not move an existing release tag; fix the problem in a new version.
+a GitHub Release if one does not already exist. Do not move an existing release
+tag; fix the problem in a new version.
 After a publication-only failure, inspect for a partial release before retrying.
 
 For a local equivalent, activate ESP-IDF and run
 `./scripts/package-firmware.sh` from a committed checkout. Output goes to a
 new `dist/` directory; move an existing `dist/` aside before packaging again.
-Firmware version 0.4.0 is retained for this repository/CI preparation because
-no firmware behavior changed.
+Firmware version 0.4.1 adds automatic, versioned publication after successful
+CI. Firmware behavior is unchanged.

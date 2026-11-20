@@ -23,8 +23,9 @@ The firmware uses [Semantic Versioning 2.0.0](https://semver.org/).
   - `MINOR` — backwards-compatible features.
   - `PATCH` — backwards-compatible fixes.
 - Only bump on a change that ships; batch related edits into one version bump.
-- Tag releases as `vX.Y.Z`. The GitHub release workflow builds and attaches the
-  firmware for tags matching `v*`.
+- After CI succeeds on `main`, the release job creates a `vX.Y.Z` tag and
+  GitHub Release when `PROJECT_VER` has not been released yet. Matching `v*`
+  tags can also be pushed manually; a tag must match `PROJECT_VER`.
 
 ## Build
 

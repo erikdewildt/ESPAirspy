@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-11-20
+
+### Added
+- Publish a versioned GitHub Release automatically after the main-branch CI
+  tests and firmware build succeed. Release assets include OTA and factory
+  images with checksums and installation notes.
+
 ### Documentation
 
 - Archive outdated dashboard imagery and align the build, hardware and firmware
